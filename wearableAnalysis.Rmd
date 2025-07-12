@@ -76,6 +76,7 @@ training <- training[,-columnsTotalAll]
 testing <- testing[,-columnsTotalAll]
 ```
 
+
 I am building two random forest models with cross validation, one with only the accelerometer data as predictors and one using all predictors.
 The random forest model is a top performing model, which is why i chose to use it.
 I also use cross validation with the parameters used in the lecture to get improved accuracy for the models
@@ -86,6 +87,7 @@ modelRfAccel <- train(classe ~., method="rf", data=trainingAccel, trControl = tr
 
 modelRfAll <- train(classe ~., method="rf", data=training, trControl = trControl)
 ```
+
 
 To get an estimate of how good the models perform i am comparing the predictions of the training data with the training data results.
 ```{r predictionTraining}
@@ -99,6 +101,11 @@ round(sum(predictedRfAll == training$classe) / nrow(training) * 100.0,2)
 ```
 Both explain 100% of the training data.
 
+- The model with the accelerometer data has an estimated accuracy of `r round(mean(modelRfAccel$resample$Accuracy)* 100.0,2)`%.
+
+- The model with the all predictors has an estimated accuracy of `r round(mean(modelRfAll$resample$Accuracy) * 100.0,2)`%.
+
+
 Comparing the prediction of both RF-models on the testing data, they differ in only one case.
 ```{r predictionTesting}
 predictedAccel <- predict(modelRfAccel, testingAccel)
@@ -106,6 +113,7 @@ predictedAll <- predict(modelRfAll, testing)
 
 sum(predictedAccel == predictedAll)
 ```
+
 
 Usually it is better to include more predictors than less, so i will be using the prediction data from my complete model as my final answer.
 ```{r}

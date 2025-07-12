@@ -435,6 +435,12 @@ round(sum(predictedRfAccel == trainingAccel$classe) / nrow(trainingAccel) * 100.
 round(sum(predictedRfAll == training$classe) / nrow(training) * 100.0,2)</code></pre>
 <pre><code>## [1] 100</code></pre>
 <p>Both explain 100% of the training data.</p>
+<ul>
+<li><p>The model with the accelerometer data has an estimated accuracy
+of 94.38%.</p></li>
+<li><p>The model with the all predictors has an estimated accuracy of
+99.32%.</p></li>
+</ul>
 <p>Comparing the prediction of both RF-models on the testing data, they
 differ in only one case.</p>
 <pre class="r"><code>predictedAccel &lt;- predict(modelRfAccel, testingAccel)
