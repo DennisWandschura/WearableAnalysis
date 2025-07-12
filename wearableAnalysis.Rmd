@@ -1,0 +1,113 @@
+---
+title: "Wearable Analysis"
+author: "Dennis Wandschura"
+date: "2025-07-12"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2, warn.conflicts = FALSE)
+library(patchwork, warn.conflicts = FALSE)
+library(dplyr, warn.conflicts = FALSE)
+library(caret, warn.conflicts = FALSE)
+library(vroom)
+library(forcats)
+library(ggcorrplot)
+
+Sys.setlocale("LC_ALL", "en_US.UTF-8")
+
+set.seed(20250712)
+```
+
+## Summary
+
+In this report i build a random forest model with data from wearable sensors, which were worn by users during exercise.
+The goal was to predict the exercise quality based on the gathered data.
+
+Building two random forest models, one with only the accelerometer data as predictors, both were able to predict 100% of the training data.
+The out of sample error should be quite low with both models.
+
+The predictions for the testing data differed only in one case.
+
+## Data Exploration
+
+Loading the data there are 19622 rows and 160 columns in the training data.
+```{r loadingData, cache=TRUE}
+testingOriginal <- vroom("./data/pml-testing.csv", delim = ",", show_col_types = FALSE)
+trainingOriginal <- vroom("./data/pml-training.csv", delim = ",", show_col_types = FALSE)
+dim(trainingOriginal)
+```
+
+Because we will be using the data of the accelerometers on the belt, forearm, arm, and dumbell i am removing the unused columns.
+One set of data uses only the accelerometer data, the other also includes the other data.
+```{r processData}
+columnsToUse <- apply(testingOriginal, 2, function(x) !any(is.na(x)))
+training <- trainingOriginal[, columnsToUse] %>% as_tibble
+testing <- testingOriginal[, columnsToUse] %>% as_tibble
+
+accelColums <- grep("accel", names(testing))
+trainingColumns = c(8:ncol(training))
+
+trainingAccel <- training[,accelColums]
+trainingAccel$classe = training$classe
+testingAccel <- testing[,accelColums]
+
+training <- training[,trainingColumns]
+testing <- testing[,trainingColumns]
+```
+
+
+## Building the model
+
+Visualizing the correlation matrix.
+Most variables have a low correlation but it might be a good idea to remove the *total_accel* variables
+```{r selectingCors1}
+ggcorrplot(round(cor(trainingAccel[,-17]), 1))
+```
+Removing the *total* columns, because they have a high correlation within their group.
+```{r selectingCors2}
+columnsTotalAccel <- grep("total", names(trainingAccel))
+trainingAccel <- trainingAccel[,-columnsTotalAccel]
+testingAccel <- testingAccel[,-columnsTotalAccel]
+
+columnsTotalAll <- grep("total", names(training))
+training <- training[,-columnsTotalAll]
+testing <- testing[,-columnsTotalAll]
+```
+
+I am building two random forest models with cross validation, one with only the accelerometer data as predictors and one using all predictors.
+The random forest model is a top performing model, which is why i chose to use it.
+I also use cross validation with the parameters used in the lecture to get improved accuracy for the models
+```{r buildingModels, cache=TRUE}
+trControl<- trainControl(method="cv", number=3)
+
+modelRfAccel <- train(classe ~., method="rf", data=trainingAccel, trControl = trControl)
+
+modelRfAll <- train(classe ~., method="rf", data=training, trControl = trControl)
+```
+
+To get an estimate of how good the models perform i am comparing the predictions of the training data with the training data results.
+```{r predictionTraining}
+predictedRfAccel <- predict(modelRfAccel, trainingAccel)
+predictedRfAll <- predict(modelRfAll, training)
+
+# RF with accel data
+round(sum(predictedRfAccel == trainingAccel$classe) / nrow(trainingAccel) * 100.0,2)
+# RF
+round(sum(predictedRfAll == training$classe) / nrow(training) * 100.0,2)
+```
+Both explain 100% of the training data.
+
+Comparing the prediction of both RF-models on the testing data, they differ in only one case.
+```{r predictionTesting}
+predictedAccel <- predict(modelRfAccel, testingAccel)
+predictedAll <- predict(modelRfAll, testing)
+
+sum(predictedAccel == predictedAll)
+```
+
+Usually it is better to include more predictors than less, so i will be using the prediction data from my complete model as my final answer.
+```{r}
+predictedAll
+```
